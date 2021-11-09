@@ -120,6 +120,10 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD read_rbkp.
+    " store new rows locally otherwise they will be interpreted again
+    " resulting in an endless loop
+    DATA lt_new_rows LIKE mt_flow.
+
     LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_inv_rcpt_noc.
       SELECT SINGLE * FROM rbkp
               WHERE belnr = @ls_flow-vbeln
@@ -139,9 +143,10 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           vbtyp_n = cv_inv_rcpt_noc
                           erdat = ls_rbkp-cpudt
                           erzet = ls_rbkp-cputm
-                          ) TO mt_flow.
+                          ) TO lt_new_rows.
       ENDIF.
     ENDLOOP.
+    APPEND LINES OF lt_new_rows TO mt_flow.
   ENDMETHOD.
 
 ENDCLASS.
