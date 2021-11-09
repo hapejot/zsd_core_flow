@@ -111,10 +111,13 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     MOVE-CORRESPONDING lt_vbfa TO mt_flow.
     LOOP AT mt_flow REFERENCE INTO DATA(lr_flow).
       IF lr_flow->vbtyp_n IS NOT INITIAL.
-        lr_flow->vbtyp_n = mt_mapping[ group = 'VBFA' source = lr_flow->vbtyp_n ]-target.
+        lr_flow->vbtyp_n = VALUE #( mt_mapping[ group = 'VBFA' source = lr_flow->vbtyp_n ]-target
+                                    DEFAULT |NOC-{ lr_flow->vbtyp_n }| ).
+
       ENDIF.
       IF lr_flow->vbtyp_v IS NOT INITIAL.
-        lr_flow->vbtyp_v = mt_mapping[ group = 'VBFA' source = lr_flow->vbtyp_v ]-target.
+        lr_flow->vbtyp_v = VALUE #( mt_mapping[ group = 'VBFA' source = lr_flow->vbtyp_v ]-target
+                                        DEFAULT |BEU-{ lr_flow->vbtyp_n }| ).
       ENDIF.
     ENDLOOP.
   ENDMETHOD.
