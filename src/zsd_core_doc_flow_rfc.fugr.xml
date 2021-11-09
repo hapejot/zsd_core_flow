@@ -9,6 +9,34 @@
    </INCLUDES>
    <FUNCTIONS>
     <item>
+     <FUNCNAME>Z_SD_CORE_DOC_FLOW_GET_BEU</FUNCNAME>
+     <REMOTE_CALL>R</REMOTE_CALL>
+     <SHORT_TEXT>Get the NOC parts of the Doc Flow</SHORT_TEXT>
+     <IMPORT>
+      <RSIMP>
+       <PARAMETER>IV_VBELN_VA</PARAMETER>
+       <TYP>VBELN_VA</TYP>
+      </RSIMP>
+     </IMPORT>
+     <TABLES>
+      <RSTBL>
+       <PARAMETER>ET_FLOW</PARAMETER>
+       <DBSTRUCT>ZSD_CORE_FLOW_S</DBSTRUCT>
+      </RSTBL>
+     </TABLES>
+     <DOCUMENTATION>
+      <RSFDO>
+       <PARAMETER>IV_VBELN_VA</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>ET_FLOW</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Entry in the document flow</STEXT>
+      </RSFDO>
+     </DOCUMENTATION>
+    </item>
+    <item>
      <FUNCNAME>Z_SD_CORE_DOC_FLOW_GET_NOC</FUNCNAME>
      <REMOTE_CALL>R</REMOTE_CALL>
      <SHORT_TEXT>Get the NOC parts of the Doc Flow</SHORT_TEXT>
