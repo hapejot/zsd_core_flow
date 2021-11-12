@@ -23,10 +23,14 @@ CLASS zcl_sd_core_doc_flow DEFINITION
              target TYPE string,
            END OF mts_map.
     TYPES: mtt_mapping TYPE SORTED TABLE OF mts_map WITH UNIQUE  KEY group source.
+    TYPES: mtt_vbeln_va TYPE STANDARD TABLE OF vbeln_va WITH DEFAULT KEY.
     CONSTANTS cv_inv_rcpt_noc TYPE string VALUE 'IRT-N' ##NO_TEXT.
     CONSTANTS cv_gds_rcpt_noc TYPE string VALUE 'GRT-N' ##NO_TEXT.
     CONSTANTS cv_purchase_oder_noc TYPE string VALUE 'P-NOC' ##NO_TEXT.
     DATA mv_vbeln_va TYPE vbeln_va.
+    METHODS get_beu_salesorder_numbers
+      RETURNING
+        VALUE(rt_result) TYPE mtt_vbeln_va.
     CLASS-DATA: mt_mapping TYPE mtt_mapping.
     CLASS-DATA: BEGIN OF ms_dest,
                   noc TYPE rfcdest,
@@ -37,6 +41,7 @@ ENDCLASS.
 
 
 CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
+
 
   METHOD create.
 
@@ -76,6 +81,107 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
 
   ENDMETHOD.
+
+
+  METHOD read.
+    DATA lt_flow LIKE mt_flow.
+    DATA: lt_vbkd TYPE STANDARD TABLE OF vbkd.
+
+    CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_NOC'
+      DESTINATION ms_dest-noc
+      EXPORTING
+        iv_vbeln_va = mv_vbeln_va
+      TABLES
+        et_flow     = mt_flow.
+
+    CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_BEU'
+      DESTINATION ms_dest-beu
+      EXPORTING
+        iv_vbeln_va = mv_vbeln_va
+      TABLES
+        et_flow     = lt_flow.
+    APPEND LINES OF lt_flow TO mt_flow.
+
+    LOOP AT get_beu_salesorder_numbers( ) INTO DATA(lv_vbeln).
+      SELECT * FROM vbkd
+              WHERE vbeln = @lv_vbeln
+              APPENDING TABLE @lt_vbkd.
+    ENDLOOP.
+
+    LOOP AT mt_flow REFERENCE INTO DATA(lr_flow) WHERE vbtyp_n = 'O-BEU'.
+      DATA(lr_vbkd) = REF #( lt_vbkd[   vbeln = lr_flow->vbeln
+                                        posnr = lr_flow->posnn ] OPTIONAL ).
+      IF lr_vbkd IS NOT BOUND.
+        lr_vbkd = REF #(  lt_vbkd[  vbeln = lr_flow->vbeln
+                                    posnr = '000000' ] OPTIONAL ).
+      ENDIF.
+      IF lr_vbkd IS BOUND
+      AND lr_vbkd->bstkd_e IS NOT INITIAL
+      AND lr_vbkd->posex_e IS NOT INITIAL.
+        lr_flow->vbelv = lr_vbkd->bstkd_e.
+        lr_flow->posnv = lr_vbkd->posex_e.
+        lr_flow->vbtyp_v = 'P-NOC'.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD read_ekbe.
+    LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_purchase_oder_noc.
+      SELECT * FROM ekbe
+                      WHERE ebeln = @ls_flow-vbeln
+                      AND ebelp = @ls_flow-posnn
+                      INTO TABLE @DATA(lt_ekbe).
+      LOOP AT lt_ekbe INTO DATA(ls_ekbe).
+        APPEND VALUE #(   BASE CORRESPONDING #( ls_ekbe )
+                          vbelv = ls_ekbe-ebeln
+                          posnv = ls_ekbe-ebelp
+                          vbtyp_v = CONV #( cv_purchase_oder_noc )
+                          vbeln = ls_ekbe-belnr
+                          posnn = ls_ekbe-buzei
+                          vbtyp_n = mt_mapping[ group = iv_group source = ls_ekbe-bewtp ]-target
+                          hlevel = ls_flow-hlevel + 1
+                          rfmng = ls_ekbe-menge
+                          rfwrt = ls_ekbe-wrbtr
+                          erdat = ls_ekbe-cpudt
+                          erzet = ls_ekbe-cputm
+                          ) TO mt_flow.
+      ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD read_rbkp.
+    " store new rows locally otherwise they will be interpreted again
+    " resulting in an endless loop
+    DATA lt_new_rows LIKE mt_flow.
+
+    LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_inv_rcpt_noc.
+      SELECT SINGLE * FROM rbkp
+              WHERE belnr = @ls_flow-vbeln
+              INTO @DATA(ls_rbkp).
+      IF sy-subrc = 0.
+        SELECT SINGLE * FROM rseg
+                  WHERE belnr = @ls_flow-vbeln
+                  AND   buzei = @ls_flow-posnn
+                  INTO @DATA(ls_rseg).
+      ENDIF.
+      IF sy-subrc = 0.
+        APPEND VALUE #(   BASE CORRESPONDING #( ls_rseg )
+                          vbelv = ls_rbkp-xblnr
+                          vbtyp_v = 'I-BEU'
+                          vbeln = ls_rbkp-belnr
+                          posnn = ls_rseg-buzei
+                          vbtyp_n = cv_inv_rcpt_noc
+                          erdat = ls_rbkp-cpudt
+                          erzet = ls_rbkp-cputm
+                          ) TO lt_new_rows.
+      ENDIF.
+    ENDLOOP.
+    APPEND LINES OF lt_new_rows TO mt_flow.
+  ENDMETHOD.
+
 
   METHOD read_regular_flow.
     DATA: ls_comwa TYPE vbco6,
@@ -122,59 +228,6 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-  METHOD read_ekbe.
-    LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_purchase_oder_noc.
-      SELECT * FROM ekbe
-                      WHERE ebeln = @ls_flow-vbeln
-                      AND ebelp = @ls_flow-posnn
-                      INTO TABLE @DATA(lt_ekbe).
-      LOOP AT lt_ekbe INTO DATA(ls_ekbe).
-        APPEND VALUE #(   BASE CORRESPONDING #( ls_ekbe )
-                          vbelv = ls_ekbe-ebeln
-                          posnv = ls_ekbe-ebelp
-                          vbtyp_v = CONV #( cv_purchase_oder_noc )
-                          vbeln = ls_ekbe-belnr
-                          posnn = ls_ekbe-buzei
-                          vbtyp_n = mt_mapping[ group = iv_group source = ls_ekbe-bewtp ]-target
-                          hlevel = ls_flow-hlevel + 1
-                          rfmng = ls_ekbe-menge
-                          rfwrt = ls_ekbe-wrbtr
-                          erdat = ls_ekbe-cpudt
-                          erzet = ls_ekbe-cputm
-                          ) TO mt_flow.
-      ENDLOOP.
-    ENDLOOP.
-  ENDMETHOD.
-
-  METHOD read_rbkp.
-    " store new rows locally otherwise they will be interpreted again
-    " resulting in an endless loop
-    DATA lt_new_rows LIKE mt_flow.
-
-    LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_inv_rcpt_noc.
-      SELECT SINGLE * FROM rbkp
-              WHERE belnr = @ls_flow-vbeln
-              INTO @DATA(ls_rbkp).
-      IF sy-subrc = 0.
-        SELECT SINGLE * FROM rseg
-                  WHERE belnr = @ls_flow-vbeln
-                  AND   buzei = @ls_flow-posnn
-                  INTO @DATA(ls_rseg).
-      ENDIF.
-      IF sy-subrc = 0.
-        APPEND VALUE #(   BASE CORRESPONDING #( ls_rseg )
-                          vbelv = ls_rbkp-xblnr
-                          vbtyp_v = 'I-BEU'
-                          vbeln = ls_rbkp-belnr
-                          posnn = ls_rseg-buzei
-                          vbtyp_n = cv_inv_rcpt_noc
-                          erdat = ls_rbkp-cpudt
-                          erzet = ls_rbkp-cputm
-                          ) TO lt_new_rows.
-      ENDIF.
-    ENDLOOP.
-    APPEND LINES OF lt_new_rows TO mt_flow.
-  ENDMETHOD.
 
   METHOD read_regular_flow_beu.
     DATA: ls_comwa TYPE vbco6,
@@ -216,23 +269,12 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-  METHOD read.
-    DATA lt_flow LIKE mt_flow.
-
-    CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_NOC'
-      DESTINATION ms_dest-noc
-      EXPORTING
-        iv_vbeln_va = mv_vbeln_va
-      TABLES
-        et_flow     = mt_flow.
-
-    CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_BEU'
-      DESTINATION ms_dest-beu
-      EXPORTING
-        iv_vbeln_va = mv_vbeln_va
-      TABLES
-        et_flow     = lt_flow.
-    APPEND LINES OF lt_flow TO mt_flow.
+  METHOD get_beu_salesorder_numbers.
+    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = 'O-BEU'.
+      IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
+        APPEND ls_flow-vbeln TO rt_result.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
