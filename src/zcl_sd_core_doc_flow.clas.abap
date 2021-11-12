@@ -27,6 +27,8 @@ CLASS zcl_sd_core_doc_flow DEFINITION
     CONSTANTS cv_inv_rcpt_noc TYPE string VALUE 'IRT-N' ##NO_TEXT.
     CONSTANTS cv_gds_rcpt_noc TYPE string VALUE 'GRT-N' ##NO_TEXT.
     CONSTANTS cv_purchase_oder_noc TYPE string VALUE 'P-NOC' ##NO_TEXT.
+    CONSTANTS cv_sales_order_beu TYPE string VALUE 'O-BEU' ##NO_TEXT.
+    CONSTANTS cv_invoice_beu TYPE zsd_core_flow_s-vbtyp_v VALUE 'I-BEU' ##NO_TEXT.
     DATA mv_vbeln_va TYPE vbeln_va.
     METHODS get_beu_salesorder_numbers
       RETURNING
@@ -58,10 +60,10 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     INSERT VALUE #( group = 'VBFA' source = 'V' target = cv_purchase_oder_noc ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = '+' target = 'ACC-N' ) INTO TABLE mt_mapping.
 
-    INSERT VALUE #( group = 'VBFA-BEU' source = 'C' target = 'O-BEU' ) INTO TABLE mt_mapping.
+    INSERT VALUE #( group = 'VBFA-BEU' source = 'C' target = cv_sales_order_beu ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA-BEU' source = 'G' target = 'C-BEU' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA-BEU' source = 'J' target = 'D-BEU' ) INTO TABLE mt_mapping.
-    INSERT VALUE #( group = 'VBFA-BEU' source = 'M' target = 'I-BEU' ) INTO TABLE mt_mapping.
+    INSERT VALUE #( group = 'VBFA-BEU' source = 'M' target = cv_invoice_beu  ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA-BEU' source = 'Q' target = 'PIK-B' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA-BEU' source = 'R' target = 'MOV-B' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA-BEU' source = 'V' target = 'P-BEU' ) INTO TABLE mt_mapping.
@@ -108,7 +110,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
               APPENDING TABLE @lt_vbkd.
     ENDLOOP.
 
-    LOOP AT mt_flow REFERENCE INTO DATA(lr_flow) WHERE vbtyp_n = 'O-BEU'.
+    LOOP AT mt_flow REFERENCE INTO DATA(lr_flow) WHERE vbtyp_n = cv_sales_order_beu.
       DATA(lr_vbkd) = REF #( lt_vbkd[   vbeln = lr_flow->vbeln
                                         posnr = lr_flow->posnn ] OPTIONAL ).
       IF lr_vbkd IS NOT BOUND.
@@ -120,7 +122,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       AND lr_vbkd->posex_e IS NOT INITIAL.
         lr_flow->vbelv = lr_vbkd->bstkd_e.
         lr_flow->posnv = lr_vbkd->posex_e.
-        lr_flow->vbtyp_v = 'P-NOC'.
+        lr_flow->vbtyp_v = cv_purchase_oder_noc.
       ENDIF.
     ENDLOOP.
 
@@ -170,7 +172,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       IF sy-subrc = 0.
         APPEND VALUE #(   BASE CORRESPONDING #( ls_rseg )
                           vbelv = ls_rbkp-xblnr
-                          vbtyp_v = 'I-BEU'
+                          vbtyp_v = cv_invoice_beu
                           vbeln = ls_rbkp-belnr
                           posnn = ls_rseg-buzei
                           vbtyp_n = cv_inv_rcpt_noc
@@ -270,7 +272,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_beu_salesorder_numbers.
-    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = 'O-BEU'.
+    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = cv_sales_order_beu.
       IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
         APPEND ls_flow-vbeln TO rt_result.
       ENDIF.
