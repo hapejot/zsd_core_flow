@@ -6,15 +6,19 @@ CLASS zcl_sd_core_doc_flow DEFINITION
   PUBLIC SECTION.
     CLASS-METHODS create
       IMPORTING
-        i_vbeln_va      TYPE vbeln_va
+        iv_doctype      TYPE zsd_vbtyp
+        iv_number       TYPE vbeln
       RETURNING
         VALUE(r_result) TYPE REF TO zcl_sd_core_doc_flow.
+    CLASS-METHODS class_constructor.
     DATA mt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY.
     METHODS: read_regular_flow,
       read_regular_flow_beu,
       read_ekbe IMPORTING iv_group TYPE string DEFAULT 'EKBE',
       read_rbkp,
-      read.
+      read
+        RAISING
+          zcx_bc_missing_value.
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES: BEGIN OF mts_map,
@@ -44,12 +48,7 @@ ENDCLASS.
 
 CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
-
-  METHOD create.
-
-    CREATE OBJECT r_result.
-
-    r_result->mv_vbeln_va = i_vbeln_va.
+  METHOD class_constructor.
 
     INSERT VALUE #( group = 'VBFA' source = 'C' target = 'O-NOC' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = 'G' target = 'C-NOC' ) INTO TABLE mt_mapping.
@@ -81,6 +80,51 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                     iv_using_trusted = abap_false
                   ).
 
+  ENDMETHOD.
+
+  METHOD create.
+    DATA: lt_vbeln_ex TYPE zbc_dopac_general_range_tt,
+          lt_vbeln_im TYPE zbc_dopac_general_range_tt,
+          lt_vbfa     TYPE STANDARD TABLE OF vbfas.
+
+    CREATE OBJECT r_result.
+
+    DATA(ls_row) = mt_mapping[ target = iv_doctype ].
+    IF ls_row-group = 'VBFA'. " NOC Document
+
+      IF ls_row-source = 'C'. " it's the salesorder, don't look further...
+        r_result->mv_vbeln_va = iv_number.
+      ELSE.
+        CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
+          EXPORTING
+            aufbereitung = '1'
+            belegtyp     = ls_row-source
+            comwa        = VALUE vbco6( vbeln = iv_number )
+          TABLES
+            vbfa_tab     = lt_vbfa
+          EXCEPTIONS
+            OTHERS       = 3.
+        IF sy-subrc = 0.
+          r_result->mv_vbeln_va = lt_vbfa[ vbtyp_v = 'C' ]-vbelv.
+        ENDIF.
+      ENDIF.
+
+    ELSEIF ls_row-group = 'VBFA-BEU'. " BEU Document
+
+      lt_vbeln_ex = VALUE #( ( sign = 'I' option = 'EQ' low = iv_number ) ).
+      CALL FUNCTION 'Z_SD_CORE_C2_DATA_PRESEL_BEU'
+        EXPORTING
+          iv_vbtyp      = CONV char4( ls_row-source )
+          it_vbeln      = lt_vbeln_ex
+        IMPORTING
+          et_sales_docs = lt_vbeln_im.
+      IF lines( lt_vbeln_im ) > 0.
+        r_result->mv_vbeln_va = CONV #( lt_vbeln_im[ 1 ]-low ).
+      ENDIF.
+    ELSE.
+
+      CLEAR r_result.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -88,6 +132,9 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   METHOD read.
     DATA lt_flow LIKE mt_flow.
     DATA: lt_vbkd TYPE STANDARD TABLE OF vbkd.
+    IF mv_vbeln_va IS INITIAL.
+      RAISE EXCEPTION TYPE zcx_bc_missing_value.
+    ENDIF.
 
     CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_NOC'
       DESTINATION ms_dest-noc
@@ -99,9 +146,10 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_BEU'
       DESTINATION ms_dest-beu
       EXPORTING
-        iv_vbeln_va = mv_vbeln_va
+        iv_doctype = 'O-NOC'
+        iv_vbeln   = mv_vbeln_va
       TABLES
-        et_flow     = lt_flow.
+        et_flow    = lt_flow.
     APPEND LINES OF lt_flow TO mt_flow.
 
     LOOP AT get_beu_salesorder_numbers( ) INTO DATA(lv_vbeln).
@@ -278,5 +326,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
   ENDMETHOD.
+
+
 
 ENDCLASS.

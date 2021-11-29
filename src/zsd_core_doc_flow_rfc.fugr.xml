@@ -14,8 +14,12 @@
      <SHORT_TEXT>Get the NOC parts of the Doc Flow</SHORT_TEXT>
      <IMPORT>
       <RSIMP>
-       <PARAMETER>IV_VBELN_VA</PARAMETER>
-       <TYP>VBELN_VA</TYP>
+       <PARAMETER>IV_DOCTYPE</PARAMETER>
+       <TYP>ZSD_VBTYP</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_VBELN</PARAMETER>
+       <TYP>VBELN</TYP>
       </RSIMP>
      </IMPORT>
      <TABLES>
@@ -26,7 +30,11 @@
      </TABLES>
      <DOCUMENTATION>
       <RSFDO>
-       <PARAMETER>IV_VBELN_VA</PARAMETER>
+       <PARAMETER>IV_DOCTYPE</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_VBELN</PARAMETER>
        <KIND>P</KIND>
       </RSFDO>
       <RSFDO>
@@ -42,8 +50,12 @@
      <SHORT_TEXT>Get the NOC parts of the Doc Flow</SHORT_TEXT>
      <IMPORT>
       <RSIMP>
-       <PARAMETER>IV_VBELN_VA</PARAMETER>
-       <TYP>VBELN_VA</TYP>
+       <PARAMETER>IV_DOCTYPE</PARAMETER>
+       <TYP>ZSD_VBTYP</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_VBELN</PARAMETER>
+       <TYP>VBELN</TYP>
       </RSIMP>
      </IMPORT>
      <TABLES>
@@ -54,7 +66,11 @@
      </TABLES>
      <DOCUMENTATION>
       <RSFDO>
-       <PARAMETER>IV_VBELN_VA</PARAMETER>
+       <PARAMETER>IV_DOCTYPE</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_VBELN</PARAMETER>
        <KIND>P</KIND>
       </RSFDO>
       <RSFDO>
