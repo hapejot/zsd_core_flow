@@ -34,13 +34,13 @@ CLASS zcl_sd_core_doc_flow DEFINITION
              matnr TYPE vbap-matnr,
              abgru TYPE vbap-abgru,
            END OF lts_row,
-           ty_lt_vbfa     TYPE STANDARD TABLE OF vbfa WITH DEFAULT KEY,
+           mtt_flow       TYPE STANDARD TABLE OF zsd_core_flow_s,
            ty_lt_material TYPE STANDARD TABLE OF lts_row WITH DEFAULT KEY.
-    METHODS read_material_numbers
+    METHODS read_additional_itm_info
       IMPORTING
         iv_vbeln TYPE vbeln_va
       CHANGING
-        ct_vbfa  TYPE ty_lt_vbfa.
+        ct_vbfa  TYPE mtt_flow.
     CONSTANTS cv_inv_rcpt_noc TYPE string VALUE 'IRT-N' ##NO_TEXT.
     CONSTANTS cv_gds_rcpt_noc TYPE string VALUE 'GRT-N' ##NO_TEXT.
     CONSTANTS cv_purchase_oder_noc TYPE string VALUE 'P-NOC' ##NO_TEXT.
@@ -53,7 +53,8 @@ CLASS zcl_sd_core_doc_flow DEFINITION
     METHODS fix_all_material.
     METHODS fix_material
       IMPORTING
-        i_lr_row        TYPE REF TO zsd_core_flow_s
+        iv_level        TYPE i
+        ir_row          TYPE REF TO zsd_core_flow_s
       RETURNING
         VALUE(rv_matnr) TYPE zsd_core_flow_s-matnr.
     CLASS-DATA: mt_mapping TYPE mtt_mapping.
@@ -65,7 +66,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
+CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
 
   METHOD class_constructor.
@@ -153,28 +154,32 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
   METHOD fix_all_material.
     LOOP AT mt_flow REFERENCE INTO DATA(lr_row)
             WHERE vbelv IS INITIAL.
-      fix_material( lr_row ).
+      fix_material( iv_level = 1
+                    ir_row = lr_row ).
     ENDLOOP.
   ENDMETHOD.
 
 
   METHOD fix_material.
-    IF i_lr_row->matnr CO ' X'.
-      CLEAR i_lr_row->matnr.
+    IF ir_row->matnr CO ' X'.
+      CLEAR ir_row->matnr.
     ENDIF.
     LOOP AT mt_flow
             REFERENCE INTO DATA(lr_next)
-            WHERE vbelv = i_lr_row->vbeln AND posnv = i_lr_row->posnn.
-      IF i_lr_row->matnr IS NOT INITIAL.
-        lr_next->matnr = i_lr_row->matnr.
+            WHERE vbelv = ir_row->vbeln AND posnv = ir_row->posnn.
+      IF ir_row->matnr IS NOT INITIAL.
+        lr_next->matnr = ir_row->matnr.
       ENDIF.
-      fix_material( lr_next ).
-      IF i_lr_row->matnr IS INITIAL.
-        i_lr_row->matnr = lr_next->matnr.
+      fix_material( iv_level = 1 + iv_level
+                    ir_row = lr_next ).
+      IF ir_row->matnr IS INITIAL.
+        ir_row->matnr = lr_next->matnr.
       ENDIF.
     ENDLOOP.
 
-
+    IF ir_row->hlevel < iv_level.
+      ir_row->hlevel = iv_level.
+    ENDIF.
   ENDMETHOD.
 
 
@@ -197,17 +202,26 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
     CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_NOC'
       DESTINATION ms_dest-noc
       EXPORTING
-        iv_vbeln_va = mv_vbeln_va
+        iv_doctype            = 'O-NOC'
+        iv_vbeln              = mv_vbeln_va
       TABLES
-        et_flow     = mt_flow.
+        et_flow               = mt_flow
+      EXCEPTIONS
+        communication_failure = 97
+        system_failure        = 98
+        OTHERS                = 99.
 
     CALL FUNCTION 'Z_SD_CORE_DOC_FLOW_GET_BEU'
       DESTINATION ms_dest-beu
       EXPORTING
-        iv_doctype = 'O-NOC'
-        iv_vbeln   = mv_vbeln_va
+        iv_doctype            = 'O-NOC'
+        iv_vbeln              = mv_vbeln_va
       TABLES
-        et_flow    = lt_flow.
+        et_flow               = lt_flow
+      EXCEPTIONS
+        communication_failure = 97
+        system_failure        = 98
+        OTHERS                = 99.
     APPEND LINES OF lt_flow TO mt_flow.
 
     LOOP AT get_beu_salesorder_numbers( ) INTO DATA(lv_vbeln).
@@ -235,6 +249,8 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
     fix_all_material( ).
 
+
+    SORT mt_flow BY matnr ASCENDING hlevel ASCENDING .
 
   ENDMETHOD.
 
@@ -264,10 +280,10 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD read_material_numbers.
+  METHOD read_additional_itm_info.
 
     DATA lt_material TYPE ty_lt_material.
-    DATA lr_vbfa TYPE REF TO vbfa.
+    DATA lr_vbfa TYPE REF TO zsd_core_flow_s.
 
     SELECT vbeln,
             posnr,
@@ -280,9 +296,11 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
     LOOP AT lt_material INTO DATA(ls_material).
       LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbeln = ls_material-vbeln AND posnn = ls_material-posnr.
         lr_vbfa->matnr = ls_material-matnr.
+        lr_vbfa->abgru = ls_material-abgru.
       ENDLOOP.
       LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbelv = ls_material-vbeln AND posnv = ls_material-posnr.
         lr_vbfa->matnr = ls_material-matnr.
+        lr_vbfa->abgru = ls_material-abgru.
       ENDLOOP.
     ENDLOOP.
 
@@ -355,10 +373,12 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 *            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
     ENDIF.
 
-    read_material_numbers(  EXPORTING iv_vbeln = mv_vbeln_va
-                            CHANGING ct_vbfa = lt_vbfa ).
 
     MOVE-CORRESPONDING lt_vbfa TO mt_flow.
+
+    read_additional_itm_info(  EXPORTING iv_vbeln = mv_vbeln_va
+                            CHANGING ct_vbfa = mt_flow ).
+
     LOOP AT mt_flow REFERENCE INTO DATA(lr_flow).
       IF lr_flow->vbtyp_n IS NOT INITIAL.
         lr_flow->vbtyp_n = VALUE #( mt_mapping[ group = 'VBFA' source = lr_flow->vbtyp_n ]-target
@@ -398,11 +418,11 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 *            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
       ENDIF.
 
-      read_material_numbers(    EXPORTING   iv_vbeln = lv_beu_order_number-vbeln
-                                CHANGING    ct_vbfa = lt_vbfa       ).
 
 
       MOVE-CORRESPONDING lt_vbfa TO mt_flow.
+      read_additional_itm_info(    EXPORTING   iv_vbeln = lv_beu_order_number-vbeln
+                                CHANGING    ct_vbfa = mt_flow     ).
       LOOP AT mt_flow REFERENCE INTO DATA(lr_flow).
         IF lr_flow->vbtyp_n IS NOT INITIAL.
           lr_flow->vbtyp_n = VALUE #( mt_mapping[ group = 'VBFA-BEU' source = lr_flow->vbtyp_n ]-target
