@@ -65,7 +65,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
+CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
+
 
   METHOD class_constructor.
 
@@ -101,10 +102,11 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD create.
     DATA: lt_vbeln_ex TYPE zbc_dopac_general_range_tt,
           lt_vbeln_im TYPE zbc_dopac_general_range_tt,
-          lt_vbfa     TYPE STANDARD TABLE OF vbfas.
+          lt_vbfa     TYPE STANDARD TABLE OF vbfa.
 
     CREATE OBJECT r_result.
 
@@ -145,6 +147,43 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       CLEAR r_result.
     ENDIF.
 
+  ENDMETHOD.
+
+
+  METHOD fix_all_material.
+    LOOP AT mt_flow REFERENCE INTO DATA(lr_row)
+            WHERE vbelv IS INITIAL.
+      fix_material( lr_row ).
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD fix_material.
+    IF i_lr_row->matnr CO ' X'.
+      CLEAR i_lr_row->matnr.
+    ENDIF.
+    LOOP AT mt_flow
+            REFERENCE INTO DATA(lr_next)
+            WHERE vbelv = i_lr_row->vbeln AND posnv = i_lr_row->posnn.
+      IF i_lr_row->matnr IS NOT INITIAL.
+        lr_next->matnr = i_lr_row->matnr.
+      ENDIF.
+      fix_material( lr_next ).
+      IF i_lr_row->matnr IS INITIAL.
+        i_lr_row->matnr = lr_next->matnr.
+      ENDIF.
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
+  METHOD get_beu_salesorder_numbers.
+    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = cv_sales_order_beu.
+      IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
+        APPEND ls_flow-vbeln TO rt_result.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
 
@@ -222,6 +261,32 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           ) TO mt_flow.
       ENDLOOP.
     ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD read_material_numbers.
+
+    DATA lt_material TYPE ty_lt_material.
+    DATA lr_vbfa TYPE REF TO vbfa.
+
+    SELECT vbeln,
+            posnr,
+            matnr,
+            abgru
+            FROM vbap
+            WHERE vbeln = @iv_vbeln
+            INTO TABLE @lt_material.
+
+    LOOP AT lt_material INTO DATA(ls_material).
+      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbeln = ls_material-vbeln AND posnn = ls_material-posnr.
+        lr_vbfa->matnr = ls_material-matnr.
+      ENDLOOP.
+      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbelv = ls_material-vbeln AND posnv = ls_material-posnr.
+        lr_vbfa->matnr = ls_material-matnr.
+      ENDLOOP.
+    ENDLOOP.
+
+
   ENDMETHOD.
 
 
@@ -307,33 +372,6 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-  METHOD read_material_numbers.
-
-    DATA lt_material TYPE ty_lt_material.
-    DATA lr_vbfa TYPE REF TO vbfa.
-
-    SELECT vbeln,
-            posnr,
-            matnr,
-            abgru
-            FROM vbap
-            WHERE vbeln = @iv_vbeln
-            INTO TABLE @lt_material.
-
-    LOOP AT lt_material INTO DATA(ls_material).
-      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbeln = ls_material-vbeln AND posnn = ls_material-posnr.
-        lr_vbfa->matnr = ls_material-matnr.
-      ENDLOOP.
-      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbelv = ls_material-vbeln AND posnv = ls_material-posnr.
-        lr_vbfa->matnr = ls_material-matnr.
-      ENDLOOP.
-    ENDLOOP.
-
-
-  ENDMETHOD.
-
-
-
 
   METHOD read_regular_flow_beu.
     DATA: ls_comwa TYPE vbco6,
@@ -378,43 +416,4 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
     ENDLOOP.
   ENDMETHOD.
-
-  METHOD get_beu_salesorder_numbers.
-    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = cv_sales_order_beu.
-      IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
-        APPEND ls_flow-vbeln TO rt_result.
-      ENDIF.
-    ENDLOOP.
-  ENDMETHOD.
-
-
-
-
-  METHOD fix_all_material.
-    LOOP AT mt_flow REFERENCE INTO DATA(lr_row)
-            WHERE vbelv IS INITIAL.
-      fix_material( lr_row ).
-    ENDLOOP.
-  ENDMETHOD.
-
-
-  METHOD fix_material.
-    IF i_lr_row->matnr CO ' X'.
-      CLEAR i_lr_row->matnr.
-    ENDIF.
-    LOOP AT mt_flow
-            REFERENCE INTO DATA(lr_next)
-            WHERE vbelv = i_lr_row->vbeln AND posnv = i_lr_row->posnn.
-      IF i_lr_row->matnr IS NOT INITIAL.
-        lr_next->matnr = i_lr_row->matnr.
-      ENDIF.
-      fix_material( lr_next ).
-      IF i_lr_row->matnr IS INITIAL.
-        i_lr_row->matnr = lr_next->matnr.
-      ENDIF.
-    ENDLOOP.
-
-
-  ENDMETHOD.
-
 ENDCLASS.
