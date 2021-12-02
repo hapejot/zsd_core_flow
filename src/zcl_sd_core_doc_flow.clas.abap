@@ -393,8 +393,8 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           vbtyp_n = cv_inv_rcpt_noc
                           erdat = ls_rbkp-cpudt
                           erzet = ls_rbkp-cputm
-                          rfmng = - ls_rseg-menge
-                          rfwrt = - ls_rseg-wrbtr
+*                          rfmng = - ls_rseg-menge  doesn't improve the outcome so it will not contain these details, it generates a second line it will not duplicate the quantities
+*                          rfwrt = - ls_rseg-wrbtr
                           ) TO lt_new_rows.
       ENDIF.
     ENDLOOP.
@@ -548,7 +548,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     LOOP AT mt_flow INTO DATA(ls_flow)
                 WHERE vbtyp_n = cv_invoice_beu.
       IF NOT line_exists( mt_flow[ vbtyp_v = cv_invoice_beu vbelv = ls_flow-vbeln posnv = ls_flow-posnn vbtyp_n = 'IRT-N' ] ).
-        WRITE: / 'invoice reiceipt missing for ', ls_flow-vbeln, ls_flow-posnn.
+        WRITE: / 'invoice reiceipt missing for ', ls_flow-vbeln, ls_flow-posnn, ls_flow-matnr.
       ENDIF.
     ENDLOOP.
 
