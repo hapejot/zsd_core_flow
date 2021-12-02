@@ -97,7 +97,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                             ( 'HU-B' )
                             ( 'PIK-B' )
                             ( 'MOV-B' )
-                            ( 'I-BEU' )
+                            ( cv_invoice_beu )
                             ( 'ACC-B' )
                             ( 'GRT-N' )
                             ( 'IRT-N' )
@@ -393,6 +393,8 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           vbtyp_n = cv_inv_rcpt_noc
                           erdat = ls_rbkp-cpudt
                           erzet = ls_rbkp-cputm
+                          rfmng = - ls_rseg-menge
+                          rfwrt = - ls_rseg-wrbtr
                           ) TO lt_new_rows.
       ENDIF.
     ENDLOOP.
@@ -507,7 +509,7 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       lt_inv_beu  LIKE mt_flow,
       ls_inv_flow TYPE zsd_core_flow_s.
 
-    lt_inv_beu = VALUE #( FOR <x> IN mt_flow WHERE ( vbtyp_n = 'I-BEU' ) ( <x> ) ).
+    lt_inv_beu = VALUE #( FOR <x> IN mt_flow WHERE ( vbtyp_n = cv_invoice_beu ) ( <x> ) ).
     LOOP AT mt_flow
             REFERENCE INTO DATA(lr_flow)
             WHERE vbtyp_n = 'IRT-N' AND posnv IS INITIAL.
@@ -541,10 +543,11 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
              erzet   TYPE vbfa-erzet,
            END OF t_row.
     DATA lt_report TYPE STANDARD TABLE OF t_row WITH DEFAULT KEY.
+    DATA: ls_makt TYPE makt.
     WRITE: mt_flow[ vbtyp_n = cv_order_noc ]-vbeln.
     LOOP AT mt_flow INTO DATA(ls_flow)
-                WHERE vbtyp_n = 'I-BEU'.
-      IF NOT line_exists( mt_flow[ vbtyp_v = 'I-BEU' vbelv = ls_flow-vbeln posnv = ls_flow-posnn vbtyp_n = 'IRT-N' ] ).
+                WHERE vbtyp_n = cv_invoice_beu.
+      IF NOT line_exists( mt_flow[ vbtyp_v = cv_invoice_beu vbelv = ls_flow-vbeln posnv = ls_flow-posnn vbtyp_n = 'IRT-N' ] ).
         WRITE: / 'invoice reiceipt missing for ', ls_flow-vbeln, ls_flow-posnn.
       ENDIF.
     ENDLOOP.
@@ -554,7 +557,16 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
     LOOP AT lt_report INTO DATA(ls_row).
       AT NEW matnr.
-        WRITE / ls_row-matnr.
+        CALL FUNCTION 'MAKT_SINGLE_READ'
+          EXPORTING
+            matnr  = ls_row-matnr
+            spras  = sy-langu
+          IMPORTING
+            wmakt  = ls_makt
+          EXCEPTIONS
+            OTHERS = 0.
+
+        WRITE: / ls_row-matnr, ls_makt-maktx.
       ENDAT.
       AT NEW vbtyp_n.
         WRITE /10 ls_row-vbtyp_n.
