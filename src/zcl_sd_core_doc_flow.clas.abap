@@ -1,26 +1,63 @@
-CLASS zcl_sd_core_doc_flow DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC .
+class ZCL_SD_CORE_DOC_FLOW definition
+  public
+  final
+  create public .
 
-  PUBLIC SECTION.
-    TYPES mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY.
-    CLASS-METHODS create
-      IMPORTING
-        iv_doctype      TYPE zsd_vbtyp
-        iv_number       TYPE vbeln
-      RETURNING
-        VALUE(r_result) TYPE REF TO zcl_sd_core_doc_flow.
-    CLASS-METHODS class_constructor.
-    DATA mt_flow TYPE mtt_flow.
-    METHODS: read_regular_flow,
-      read_regular_flow_beu,
-      read_ekbe IMPORTING iv_group TYPE string DEFAULT 'EKBE',
-      read_rbkp,
-      read
-        RAISING
-          zcx_bc_missing_value,
-      write_report.
+public section.
+
+  types:
+    mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY .
+
+  data MT_FLOW type MTT_FLOW .
+    CONSTANTS:
+      BEGIN OF c_vbtyp,
+        inquiry                    TYPE vbak-vbtyp VALUE 'A',       " Inquiry
+        quotation                  TYPE vbak-vbtyp VALUE 'B',       " Quotation
+        order                      TYPE vbak-vbtyp VALUE 'C',       " Order
+        item_proposal              TYPE vbak-vbtyp VALUE 'D',       " Item Proposal
+        scheduling_agreement       TYPE vbak-vbtyp VALUE 'E',       " Scheduling Agreement
+        scheduling_agreement2      TYPE vbak-vbtyp VALUE 'F',       " Scheduling Agreement with External Service Agent
+        contract                   TYPE vbak-vbtyp VALUE 'G',       " Contract
+        contract_space             TYPE vbak-vbtyp VALUE ' ',       " Contract is often stored without vbtyp filled
+        returns                    TYPE vbak-vbtyp VALUE 'H',       " Returns
+        order_without_charge       TYPE vbak-vbtyp VALUE 'I',       " Order Without Charge
+        delivery                   TYPE vbak-vbtyp VALUE 'J',       " Delivery
+        credit_memo_request        TYPE vbak-vbtyp VALUE 'K',       " Credit Memo Request
+        debit_memo_request         TYPE vbak-vbtyp VALUE 'L',       " Debit Memo Request
+        invoice                    TYPE vbak-vbtyp VALUE 'M',       " Invoice
+        invoice_cancellation       TYPE vbak-vbtyp VALUE 'N',       " Invoice Cancellation
+        credit_memo                TYPE vbak-vbtyp VALUE 'O',       " Credit Memo
+        debit_memo                 TYPE vbak-vbtyp VALUE 'P',       " Debit Memo
+        wms_transfer_order         TYPE vbak-vbtyp VALUE 'Q',       " WMS Transfer Order
+        goods_movement             TYPE vbak-vbtyp VALUE 'R',       " Goods Movement
+        credit_memo_cancellation   TYPE vbak-vbtyp VALUE 'S',       " Credit Memo Cancellation
+        returns_delivery_for_order TYPE vbak-vbtyp VALUE 'T',       " Returns Delivery for Order
+        pro_forma_invoice          TYPE vbak-vbtyp VALUE 'U',       " Pro Forma Invoice
+        purchase_order             TYPE vbak-vbtyp VALUE 'V',       " Purchase Order
+        independent_reqts_plan     TYPE vbak-vbtyp VALUE 'W',       " Independent Reqts Plan
+        handling_unit              TYPE vbak-vbtyp VALUE 'X',       " Handling Unit
+        rebate_agreement           TYPE vbak-vbtyp VALUE 'Y',       " Rebate Agreement
+      END OF c_vbtyp.
+
+
+  methods CONSTRUCTOR .
+  class-methods CREATE
+    importing
+      !IV_DOCTYPE type ZSD_VBTYP
+      !IV_NUMBER type VBELN
+    returning
+      value(R_RESULT) type ref to ZCL_SD_CORE_DOC_FLOW .
+  class-methods CLASS_CONSTRUCTOR .
+  methods READ_REGULAR_FLOW .
+  methods READ_REGULAR_FLOW_BEU .
+  methods READ_EKBE
+    importing
+      !IV_GROUP type STRING default 'EKBE' .
+  methods READ_RBKP .
+  methods READ
+    raising
+      ZCX_BC_MISSING_VALUE .
+  methods WRITE_REPORT .
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES: BEGIN OF mts_map,
@@ -84,7 +121,27 @@ ENDCLASS.
 
 
 
-CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
+CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
+
+
+  METHOD change_vbtyp.
+
+    DATA lr_flow TYPE REF TO zsd_core_flow_s.
+
+    LOOP AT mt_flow REFERENCE INTO lr_flow
+            WHERE vbtyp_n = iv_old
+            AND vbeln = iv_vbeln.
+      lr_flow->vbtyp_n = iv_new.
+    ENDLOOP.
+
+    LOOP AT mt_flow REFERENCE INTO lr_flow
+            WHERE vbtyp_v = iv_old
+            AND vbelv = iv_vbeln.
+      lr_flow->vbtyp_v = iv_new.
+    ENDLOOP.
+
+
+  ENDMETHOD.
 
 
   METHOD class_constructor.
@@ -151,6 +208,10 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
 
+  method CONSTRUCTOR.
+  endmethod.
+
+
   METHOD create.
     DATA: lt_vbeln_ex TYPE zbc_dopac_general_range_tt,
           lt_vbeln_im TYPE zbc_dopac_general_range_tt,
@@ -198,11 +259,106 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD detect_snd_order.
+    DATA: lr_flow  TYPE REF TO zsd_core_flow_s,
+          lv_vbeln TYPE zsd_core_flow_s-vbeln.
+
+    lv_vbeln = find_specific_relation( iv_vbtyp_v = cv_order_noc
+                                        iv_vbtyp_n = cv_order_noc ).
+    IF lv_vbeln IS NOT INITIAL.
+      change_vbtyp(     iv_vbeln = lv_vbeln
+                        iv_old   = cv_order_noc
+                        iv_new   = cv_order_2nd_noc ).
+    ENDIF.
+
+    lv_vbeln = find_specific_relation( iv_vbtyp_v = cv_order_2nd_noc
+                                        iv_vbtyp_n = 'D-NOC' ).
+    IF lv_vbeln IS NOT INITIAL.
+      change_vbtyp(     iv_vbeln = lv_vbeln
+                        iv_old   = 'D-NOC'
+                        iv_new   = 'D2-N' ).
+    ENDIF.
+
+    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'D2-N'
+                                        iv_vbtyp_n = 'I-NOC'  ).
+    IF lv_vbeln IS NOT INITIAL.
+      change_vbtyp(     iv_vbeln = lv_vbeln
+                        iv_old   = 'I-NOC'
+                        iv_new   = 'I2-N' ).
+    ENDIF.
+
+    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'D2-N'
+                                        iv_vbtyp_n = 'MOV-N'  ).
+    IF lv_vbeln IS NOT INITIAL.
+      change_vbtyp(     iv_vbeln = lv_vbeln
+                        iv_old   = 'MOV-N'
+                        iv_new   = 'M2-N' ).
+    ENDIF.
+
+    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'I2-N'
+                                        iv_vbtyp_n = 'ACC-N'  ).
+    IF lv_vbeln IS NOT INITIAL.
+      change_vbtyp(     iv_vbeln = lv_vbeln
+                        iv_old   = 'ACC-N'
+                        iv_new   = 'A2-N' ).
+    ENDIF.
+
+
+  ENDMETHOD.
+
+
+  METHOD find_specific_relation.
+
+    DATA lr_flow TYPE REF TO zsd_core_flow_s.
+
+    LOOP AT mt_flow REFERENCE INTO lr_flow
+            WHERE vbtyp_n = iv_vbtyp_n
+            AND vbtyp_v = iv_vbtyp_v.
+      rv_vbeln = lr_flow->vbeln.
+      EXIT.
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
   METHOD fix_all_material.
     LOOP AT mt_flow REFERENCE INTO DATA(lr_row)
             WHERE vbtyp_v = cv_order_noc.
       fix_material( iv_level = 1
                     ir_row = lr_row ).
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD fix_inv_receipt_posnr.
+    DATA:
+      lt_inv_beu  LIKE mt_flow,
+      ls_inv_flow TYPE zsd_core_flow_s.
+
+    lt_inv_beu = VALUE #( FOR <x> IN mt_flow WHERE ( vbtyp_n = cv_invoice_beu ) ( <x> ) ).
+    LOOP AT mt_flow
+            REFERENCE INTO DATA(lr_flow)
+            WHERE vbtyp_n = 'IRT-N' AND posnv IS INITIAL.
+      READ TABLE lt_inv_beu INTO ls_inv_flow
+                  WITH KEY vbeln = lr_flow->vbelv
+                                matnr = lr_flow->matnr.
+      IF sy-subrc = 0.
+        lr_flow->posnv = ls_inv_flow-posnn.
+        lr_flow->hlevel = ls_inv_flow-hlevel + 1.
+        DELETE lt_inv_beu INDEX sy-tabix.
+      ENDIF.
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
+  METHOD fix_level.
+    LOOP AT mt_flow
+            REFERENCE INTO DATA(lr_row).
+      READ TABLE mt_level WITH KEY table_line = lr_row->vbtyp_n TRANSPORTING NO FIELDS.
+      lr_row->hlevel = sy-tabix.
     ENDLOOP.
   ENDMETHOD.
 
@@ -227,15 +383,6 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
         ENDIF.
       ENDLOOP.
     ENDIF.
-  ENDMETHOD.
-
-
-  METHOD fix_level.
-    LOOP AT mt_flow
-            REFERENCE INTO DATA(lr_row).
-      READ TABLE mt_level WITH KEY table_line = lr_row->vbtyp_n TRANSPORTING NO FIELDS.
-      lr_row->hlevel = sy-tabix.
-    ENDLOOP.
   ENDMETHOD.
 
 
@@ -316,6 +463,49 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD read_additional_itm_info.
+
+    DATA lt_material TYPE ty_lt_material.
+    DATA lr_vbfa TYPE REF TO zsd_core_flow_s.
+
+    SELECT  vbeln,
+            posnr,
+            matnr,
+            abgru
+            FROM vbap
+            WHERE vbeln = @iv_vbeln
+            INTO TABLE @lt_material.
+
+    LOOP AT lt_material INTO DATA(ls_material).
+      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
+                      WHERE vbtyp_n = c_vbtyp-order
+                      AND vbeln = ls_material-vbeln
+                      AND posnn = ls_material-posnr.
+        lr_vbfa->matnr = ls_material-matnr.
+      ENDLOOP.
+      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
+                      WHERE vbtyp_v = c_vbtyp-order
+                      AND vbelv = ls_material-vbeln
+                      AND posnv = ls_material-posnr.
+        lr_vbfa->matnr = ls_material-matnr.
+      ENDLOOP.
+    ENDLOOP.
+
+    LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
+                    WHERE vbtyp_n = c_vbtyp-purchase_order.
+      SELECT SINGLE loekz FROM ekpo
+                  WHERE ebeln = @lr_vbfa->vbeln
+                  AND ebelp = @lr_vbfa->posnn
+                  INTO @DATA(lv_deleted).
+      IF sy-subrc = 0 AND lv_deleted IS NOT INITIAL.
+        lr_vbfa->abgru = '00'.
+      ENDIF.
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
   METHOD read_ekbe.
     LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_purchase_oder_noc.
       SELECT * FROM ekbe
@@ -338,34 +528,6 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           ) TO mt_flow.
       ENDLOOP.
     ENDLOOP.
-  ENDMETHOD.
-
-
-  METHOD read_additional_itm_info.
-
-    DATA lt_material TYPE ty_lt_material.
-    DATA lr_vbfa TYPE REF TO zsd_core_flow_s.
-
-    SELECT vbeln,
-            posnr,
-            matnr,
-            abgru
-            FROM vbap
-            WHERE vbeln = @iv_vbeln
-            INTO TABLE @lt_material.
-
-    LOOP AT lt_material INTO DATA(ls_material).
-      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbeln = ls_material-vbeln AND posnn = ls_material-posnr.
-        lr_vbfa->matnr = ls_material-matnr.
-        lr_vbfa->abgru = ls_material-abgru.
-      ENDLOOP.
-      LOOP AT ct_vbfa REFERENCE INTO lr_vbfa WHERE vbelv = ls_material-vbeln AND posnv = ls_material-posnr.
-        lr_vbfa->matnr = ls_material-matnr.
-        lr_vbfa->abgru = ls_material-abgru.
-      ENDLOOP.
-    ENDLOOP.
-
-
   ENDMETHOD.
 
 
@@ -414,28 +576,12 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
     CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
       EXPORTING
-*       aufbereitung  = '2'    " Type of flow editing
         belegtyp = 'C'    " Document Category: Order
         comwa    = ls_comwa    " Outgoing document for flow processing
-*       nachfolger    = 'X'    " Successor display wanted
-*       n_stufen = '50'    " Number of levels of the successors
-*       vorgaenger    = 'X'    " Predecessor wanted
-*       v_stufen = '50'    " Number of levels of the predecessors
-*       no_acc_doc    = SPACE
-*  IMPORTING
-*       belegtyp_back =
       TABLES
         vbfa_tab = lt_vbfa    " Document flow information
-*  EXCEPTIONS
-*       no_vbfa  = 1
-*       no_vbuk_found = 2
-*       others   = 3
-      .
-    IF sy-subrc <> 0.
-* MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-*            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
-    ENDIF.
-
+      EXCEPTIONS
+        OTHERS   = 0. " the flow will just be empty
 
     MOVE-CORRESPONDING lt_vbfa TO mt_flow.
 
@@ -504,28 +650,6 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD fix_inv_receipt_posnr.
-    DATA:
-      lt_inv_beu  LIKE mt_flow,
-      ls_inv_flow TYPE zsd_core_flow_s.
-
-    lt_inv_beu = VALUE #( FOR <x> IN mt_flow WHERE ( vbtyp_n = cv_invoice_beu ) ( <x> ) ).
-    LOOP AT mt_flow
-            REFERENCE INTO DATA(lr_flow)
-            WHERE vbtyp_n = 'IRT-N' AND posnv IS INITIAL.
-      READ TABLE lt_inv_beu INTO ls_inv_flow
-                  WITH KEY vbeln = lr_flow->vbelv
-                                matnr = lr_flow->matnr.
-      IF sy-subrc = 0.
-        lr_flow->posnv = ls_inv_flow-posnn.
-        lr_flow->hlevel = ls_inv_flow-hlevel + 1.
-        DELETE lt_inv_beu INDEX sy-tabix.
-      ENDIF.
-    ENDLOOP.
-
-
-  ENDMETHOD.
-
 
   METHOD write_report.
     TYPES: BEGIN OF t_row,
@@ -580,90 +704,4 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       ENDAT.
     ENDLOOP.
   ENDMETHOD.
-
-
-  METHOD detect_snd_order.
-    DATA: lr_flow  TYPE REF TO zsd_core_flow_s,
-          lv_vbeln TYPE zsd_core_flow_s-vbeln.
-
-    lv_vbeln = find_specific_relation( iv_vbtyp_v = cv_order_noc
-                                        iv_vbtyp_n = cv_order_noc ).
-    IF lv_vbeln IS NOT INITIAL.
-      change_vbtyp(     iv_vbeln = lv_vbeln
-                        iv_old   = cv_order_noc
-                        iv_new   = cv_order_2nd_noc ).
-    ENDIF.
-
-    lv_vbeln = find_specific_relation( iv_vbtyp_v = cv_order_2nd_noc
-                                        iv_vbtyp_n = 'D-NOC' ).
-    IF lv_vbeln IS NOT INITIAL.
-      change_vbtyp(     iv_vbeln = lv_vbeln
-                        iv_old   = 'D-NOC'
-                        iv_new   = 'D2-N' ).
-    ENDIF.
-
-    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'D2-N'
-                                        iv_vbtyp_n = 'I-NOC'  ).
-    IF lv_vbeln IS NOT INITIAL.
-      change_vbtyp(     iv_vbeln = lv_vbeln
-                        iv_old   = 'I-NOC'
-                        iv_new   = 'I2-N' ).
-    ENDIF.
-
-    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'D2-N'
-                                        iv_vbtyp_n = 'MOV-N'  ).
-    IF lv_vbeln IS NOT INITIAL.
-      change_vbtyp(     iv_vbeln = lv_vbeln
-                        iv_old   = 'MOV-N'
-                        iv_new   = 'M2-N' ).
-    ENDIF.
-
-    lv_vbeln = find_specific_relation( iv_vbtyp_v = 'I2-N'
-                                        iv_vbtyp_n = 'ACC-N'  ).
-    IF lv_vbeln IS NOT INITIAL.
-      change_vbtyp(     iv_vbeln = lv_vbeln
-                        iv_old   = 'ACC-N'
-                        iv_new   = 'A2-N' ).
-    ENDIF.
-
-
-  ENDMETHOD.
-
-  METHOD find_specific_relation.
-
-    DATA lr_flow TYPE REF TO zsd_core_flow_s.
-
-    LOOP AT mt_flow REFERENCE INTO lr_flow
-            WHERE vbtyp_n = iv_vbtyp_n
-            AND vbtyp_v = iv_vbtyp_v.
-      rv_vbeln = lr_flow->vbeln.
-      EXIT.
-    ENDLOOP.
-
-
-  ENDMETHOD.
-
-
-
-  METHOD change_vbtyp.
-
-    DATA lr_flow TYPE REF TO zsd_core_flow_s.
-
-    LOOP AT mt_flow REFERENCE INTO lr_flow
-            WHERE vbtyp_n = iv_old
-            AND vbeln = iv_vbeln.
-      lr_flow->vbtyp_n = iv_new.
-    ENDLOOP.
-
-    LOOP AT mt_flow REFERENCE INTO lr_flow
-            WHERE vbtyp_v = iv_old
-            AND vbelv = iv_vbeln.
-      lr_flow->vbtyp_v = iv_new.
-    ENDLOOP.
-
-
-  ENDMETHOD.
-
-
-
 ENDCLASS.
