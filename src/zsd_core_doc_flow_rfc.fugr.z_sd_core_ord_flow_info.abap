@@ -14,8 +14,9 @@ FUNCTION z_sd_core_ord_flow_info.
 *"     VALUE(EV_BELEGTYP_BACK) TYPE  VBUK-VBTYP
 *"     VALUE(ES_RETURN) TYPE  BAPIRET2
 *"  TABLES
-*"      ET_VBFA_TAB STRUCTURE  VBFA
+*"      ET_VBFA_TAB STRUCTURE  ZSD_VBFA_ECC
 *"----------------------------------------------------------------------
+  DATA lt_vbfa TYPE STANDARD TABLE OF vbfa.
 
 
   CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
@@ -31,7 +32,7 @@ FUNCTION z_sd_core_ord_flow_info.
     IMPORTING
       belegtyp_back = ev_belegtyp_back
     TABLES
-      vbfa_tab      = et_vbfa_tab    " Document flow information
+      vbfa_tab      = lt_vbfa    " Document flow information
     EXCEPTIONS
       no_vbfa       = 1
       no_vbuk_found = 2
@@ -46,6 +47,7 @@ FUNCTION z_sd_core_ord_flow_info.
         message_v1 = sy-subrc
     ).
   ELSE.
+    MOVE-CORRESPONDING lt_vbfa TO et_vbfa_tab[].
     es_return = VALUE #( type = 'S' ).
   ENDIF.
 
