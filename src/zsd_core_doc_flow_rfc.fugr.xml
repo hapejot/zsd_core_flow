@@ -80,6 +80,126 @@
       </RSFDO>
      </DOCUMENTATION>
     </item>
+    <item>
+     <FUNCNAME>Z_SD_CORE_ORD_FLOW_INFO</FUNCNAME>
+     <REMOTE_CALL>R</REMOTE_CALL>
+     <SHORT_TEXT>RFC Wrapper to the RV_ORDER_FLOW_INFORMATION fm</SHORT_TEXT>
+     <IMPORT>
+      <RSIMP>
+       <PARAMETER>IV_AUFBEREITUNG</PARAMETER>
+       <DEFAULT>&apos;2&apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>CHAR1</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_BELEGTYP</PARAMETER>
+       <DEFAULT>&apos; &apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>VBUK-VBTYP</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IS_COMWA</PARAMETER>
+       <TYP>VBCO6</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_NACHFOLGER</PARAMETER>
+       <DEFAULT>&apos;X&apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>CHAR1</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_N_STUFEN</PARAMETER>
+       <DEFAULT>&apos;50&apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>VBFA-STUFE</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_VORGAENGER</PARAMETER>
+       <DEFAULT>&apos;X&apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>CHAR1</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_V_STUFEN</PARAMETER>
+       <DEFAULT>&apos;50&apos;</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>VBFA-STUFE</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>IV_NO_ACC_DOC</PARAMETER>
+       <DEFAULT>SPACE</DEFAULT>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>CHAR1</TYP>
+      </RSIMP>
+     </IMPORT>
+     <EXPORT>
+      <RSEXP>
+       <PARAMETER>EV_BELEGTYP_BACK</PARAMETER>
+       <TYP>VBUK-VBTYP</TYP>
+      </RSEXP>
+      <RSEXP>
+       <PARAMETER>ES_RETURN</PARAMETER>
+       <TYP>BAPIRET2</TYP>
+      </RSEXP>
+     </EXPORT>
+     <TABLES>
+      <RSTBL>
+       <PARAMETER>ET_VBFA_TAB</PARAMETER>
+       <DBSTRUCT>VBFA</DBSTRUCT>
+      </RSTBL>
+     </TABLES>
+     <DOCUMENTATION>
+      <RSFDO>
+       <PARAMETER>IV_AUFBEREITUNG</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Single-Character Indicator</STEXT>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_BELEGTYP</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IS_COMWA</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_NACHFOLGER</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Single-Character Indicator</STEXT>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_N_STUFEN</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_VORGAENGER</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Single-Character Indicator</STEXT>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_V_STUFEN</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>IV_NO_ACC_DOC</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>EV_BELEGTYP_BACK</PARAMETER>
+       <KIND>P</KIND>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>ES_RETURN</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Return Parameter</STEXT>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>ET_VBFA_TAB</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Sales Document Flow</STEXT>
+      </RSFDO>
+     </DOCUMENTATION>
+    </item>
    </FUNCTIONS>
   </asx:values>
  </asx:abap>

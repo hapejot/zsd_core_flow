@@ -1,63 +1,64 @@
-class ZCL_SD_CORE_DOC_FLOW definition
-  public
-  final
-  create public .
+CLASS zcl_sd_core_doc_flow DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  types:
-    mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY .
+    TYPES:
+      mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY .
 
-  data MT_FLOW type MTT_FLOW .
+    DATA mt_flow TYPE mtt_flow .
     CONSTANTS:
       BEGIN OF c_vbtyp,
-        inquiry                    TYPE vbak-vbtyp VALUE 'A',       " Inquiry
-        quotation                  TYPE vbak-vbtyp VALUE 'B',       " Quotation
-        order                      TYPE vbak-vbtyp VALUE 'C',       " Order
-        item_proposal              TYPE vbak-vbtyp VALUE 'D',       " Item Proposal
-        scheduling_agreement       TYPE vbak-vbtyp VALUE 'E',       " Scheduling Agreement
-        scheduling_agreement2      TYPE vbak-vbtyp VALUE 'F',       " Scheduling Agreement with External Service Agent
-        contract                   TYPE vbak-vbtyp VALUE 'G',       " Contract
-        contract_space             TYPE vbak-vbtyp VALUE ' ',       " Contract is often stored without vbtyp filled
-        returns                    TYPE vbak-vbtyp VALUE 'H',       " Returns
-        order_without_charge       TYPE vbak-vbtyp VALUE 'I',       " Order Without Charge
-        delivery                   TYPE vbak-vbtyp VALUE 'J',       " Delivery
-        credit_memo_request        TYPE vbak-vbtyp VALUE 'K',       " Credit Memo Request
-        debit_memo_request         TYPE vbak-vbtyp VALUE 'L',       " Debit Memo Request
-        invoice                    TYPE vbak-vbtyp VALUE 'M',       " Invoice
-        invoice_cancellation       TYPE vbak-vbtyp VALUE 'N',       " Invoice Cancellation
-        credit_memo                TYPE vbak-vbtyp VALUE 'O',       " Credit Memo
-        debit_memo                 TYPE vbak-vbtyp VALUE 'P',       " Debit Memo
-        wms_transfer_order         TYPE vbak-vbtyp VALUE 'Q',       " WMS Transfer Order
-        goods_movement             TYPE vbak-vbtyp VALUE 'R',       " Goods Movement
-        credit_memo_cancellation   TYPE vbak-vbtyp VALUE 'S',       " Credit Memo Cancellation
-        returns_delivery_for_order TYPE vbak-vbtyp VALUE 'T',       " Returns Delivery for Order
-        pro_forma_invoice          TYPE vbak-vbtyp VALUE 'U',       " Pro Forma Invoice
-        purchase_order             TYPE vbak-vbtyp VALUE 'V',       " Purchase Order
-        independent_reqts_plan     TYPE vbak-vbtyp VALUE 'W',       " Independent Reqts Plan
-        handling_unit              TYPE vbak-vbtyp VALUE 'X',       " Handling Unit
-        rebate_agreement           TYPE vbak-vbtyp VALUE 'Y',       " Rebate Agreement
-      END OF c_vbtyp.
+        inquiry                    TYPE vbak-vbtyp VALUE 'A',
+        quotation                  TYPE vbak-vbtyp VALUE 'B',
+        order                      TYPE vbak-vbtyp VALUE 'C',
+        item_proposal              TYPE vbak-vbtyp VALUE 'D',
+        scheduling_agreement       TYPE vbak-vbtyp VALUE 'E',
+        scheduling_agreement2      TYPE vbak-vbtyp VALUE 'F',
+        contract                   TYPE vbak-vbtyp VALUE 'G',
+        contract_space             TYPE vbak-vbtyp VALUE ' ',
+        returns                    TYPE vbak-vbtyp VALUE 'H',
+        order_without_charge       TYPE vbak-vbtyp VALUE 'I',
+        delivery                   TYPE vbak-vbtyp VALUE 'J',
+        credit_memo_request        TYPE vbak-vbtyp VALUE 'K',
+        debit_memo_request         TYPE vbak-vbtyp VALUE 'L',
+        invoice                    TYPE vbak-vbtyp VALUE 'M',
+        invoice_cancellation       TYPE vbak-vbtyp VALUE 'N',
+        credit_memo                TYPE vbak-vbtyp VALUE 'O',
+        debit_memo                 TYPE vbak-vbtyp VALUE 'P',
+        wms_transfer_order         TYPE vbak-vbtyp VALUE 'Q',
+        goods_movement             TYPE vbak-vbtyp VALUE 'R',
+        credit_memo_cancellation   TYPE vbak-vbtyp VALUE 'S',
+        returns_delivery_for_order TYPE vbak-vbtyp VALUE 'T',
+        pro_forma_invoice          TYPE vbak-vbtyp VALUE 'U',
+        purchase_order             TYPE vbak-vbtyp VALUE 'V',
+        independent_reqts_plan     TYPE vbak-vbtyp VALUE 'W',
+        handling_unit              TYPE vbak-vbtyp VALUE 'X',
+        rebate_agreement           TYPE vbak-vbtyp VALUE 'Y',
+      END OF c_vbtyp .
 
+    METHODS constructor .
+    CLASS-METHODS create
+      IMPORTING
+        !iv_doctype     TYPE zsd_vbtyp
+        !iv_number      TYPE vbeln
+      RETURNING
+        VALUE(r_result) TYPE REF TO zcl_sd_core_doc_flow .
+    CLASS-METHODS class_constructor .
+    METHODS read_regular_flow .
+    METHODS read_regular_flow_beu .
+    METHODS read_ekbe
+      IMPORTING
+        !iv_group TYPE string DEFAULT 'EKBE' .
+    METHODS read_rbkp .
+    METHODS read
+      RAISING
+        zcx_bc_missing_value .
+    METHODS write_report .
+    METHODS prepare_flow.
 
-  methods CONSTRUCTOR .
-  class-methods CREATE
-    importing
-      !IV_DOCTYPE type ZSD_VBTYP
-      !IV_NUMBER type VBELN
-    returning
-      value(R_RESULT) type ref to ZCL_SD_CORE_DOC_FLOW .
-  class-methods CLASS_CONSTRUCTOR .
-  methods READ_REGULAR_FLOW .
-  methods READ_REGULAR_FLOW_BEU .
-  methods READ_EKBE
-    importing
-      !IV_GROUP type STRING default 'EKBE' .
-  methods READ_RBKP .
-  methods READ
-    raising
-      ZCX_BC_MISSING_VALUE .
-  methods WRITE_REPORT .
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES: BEGIN OF mts_map,
@@ -73,7 +74,26 @@ public section.
              matnr TYPE vbap-matnr,
              abgru TYPE vbap-abgru,
            END OF lts_row,
-           ty_lt_material TYPE STANDARD TABLE OF lts_row WITH DEFAULT KEY.
+           mtt_material TYPE STANDARD TABLE OF lts_row WITH DEFAULT KEY,
+           ty_lt_vbkd   TYPE STANDARD TABLE OF vbkd WITH DEFAULT KEY,
+           ty_lt_ekbe   TYPE STANDARD TABLE OF ekbe WITH DEFAULT KEY,
+           BEGIN OF mts_vbeln,
+             vbeln TYPE vbkd-vbeln,
+           END OF mts_vbeln,
+           ty_lt_beu_orders TYPE STANDARD TABLE OF mts_vbeln WITH DEFAULT KEY.
+    METHODS db_select_vbkd_vbeln
+      RETURNING
+        VALUE(rt_beu_orders) TYPE ty_lt_beu_orders.
+    METHODS db_select_ekbe
+      IMPORTING
+        is_flow        TYPE zsd_core_flow_s
+      RETURNING
+        VALUE(rt_ekbe) TYPE ty_lt_ekbe.
+    METHODS db_select_vbkd
+      IMPORTING
+        iv_vbeln       TYPE vbeln_va
+      RETURNING
+        VALUE(rt_vbkd) TYPE ty_lt_vbkd.
     METHODS read_additional_itm_info
       IMPORTING
         iv_vbeln TYPE vbeln_va
@@ -111,6 +131,27 @@ public section.
       RETURNING
                 VALUE(rv_vbeln) TYPE zsd_core_flow_s-vbeln.
     METHODS fix_level.
+    METHODS db_select_vbap
+      IMPORTING
+        iv_vbeln           TYPE vbeln_va
+      RETURNING
+        VALUE(rt_material) TYPE zcl_sd_core_doc_flow=>mtt_material.
+    METHODS db_select_ekpo_loekz
+      IMPORTING
+        ir_vbfa           TYPE REF TO zsd_core_flow_s
+      RETURNING
+        VALUE(rv_deleted) TYPE ekpo-loekz.
+    METHODS db_select_rbkp
+      IMPORTING
+        is_flow        TYPE zsd_core_flow_s
+      RETURNING
+        VALUE(rs_rbkp) TYPE rbkp.
+    METHODS db_select_rseg
+      IMPORTING
+        is_flow        TYPE zsd_core_flow_s
+      RETURNING
+        VALUE(rs_rseg) TYPE rseg.
+
     CLASS-DATA: mt_mapping TYPE mtt_mapping.
     CLASS-DATA: mt_level TYPE STANDARD TABLE OF zsd_vbtyp WITH DEFAULT KEY.
     CLASS-DATA: BEGIN OF ms_dest,
@@ -121,7 +162,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
+CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
 
   METHOD change_vbtyp.
@@ -139,7 +180,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
             AND vbelv = iv_vbeln.
       lr_flow->vbtyp_v = iv_new.
     ENDLOOP.
-
 
   ENDMETHOD.
 
@@ -171,7 +211,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
                             ( 'A2-N' )
                                ).
 
-
     INSERT VALUE #( group = 'VBFA' source = 'C' target = cv_order_noc ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = 'G' target = 'C-NOC' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = 'J' target = 'D-NOC' ) INTO TABLE mt_mapping.
@@ -180,7 +219,7 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
     INSERT VALUE #( group = 'VBFA' source = 'R' target = 'MOV-N' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = 'V' target = cv_purchase_oder_noc ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = '+' target = 'ACC-N' ) INTO TABLE mt_mapping.
-    INSERT VALUE #( group = 'VBFA' source = 'I' target = 'FOC-N' ) INTO TABLE mt_mapping. " free of charge order
+    INSERT VALUE #( group = 'VBFA' source = 'I' target = 'FOC-N' ) INTO TABLE mt_mapping.
     INSERT VALUE #( group = 'VBFA' source = 'i' target = 'GR-N' ) INTO TABLE mt_mapping.
 
     INSERT VALUE #( group = 'VBFA-BEU' source = 'C' target = cv_sales_order_beu ) INTO TABLE mt_mapping.
@@ -208,38 +247,44 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method CONSTRUCTOR.
-  endmethod.
+  METHOD constructor.
+  ENDMETHOD.
 
 
   METHOD create.
     DATA: lt_vbeln_ex TYPE zbc_dopac_general_range_tt,
           lt_vbeln_im TYPE zbc_dopac_general_range_tt,
-          lt_vbfa     TYPE STANDARD TABLE OF vbfa.
+          lt_vbfa     TYPE STANDARD TABLE OF vbfa,
+          ls_return   TYPE bapiret2.
 
     CREATE OBJECT r_result.
 
     DATA(ls_row) = mt_mapping[ target = iv_doctype ].
-    IF ls_row-group = 'VBFA'. " NOC Document
+    IF ls_row-group = 'VBFA'.
 
-      IF ls_row-source = 'C'. " it's the salesorder, don't look further...
+      IF ls_row-source = 'C'.
         r_result->mv_vbeln_va = iv_number.
       ELSE.
-        CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
+        CALL FUNCTION 'Z_SD_CORE_ORD_FLOW_INFO'
+          DESTINATION ms_dest-noc
           EXPORTING
-            aufbereitung = '1'
-            belegtyp     = ls_row-source
-            comwa        = VALUE vbco6( vbeln = iv_number )
+            iv_aufbereitung       = '1'
+            iv_belegtyp           = ls_row-source
+            is_comwa              = VALUE vbco6( vbeln = iv_number )
+          IMPORTING
+            es_return             = ls_return
           TABLES
-            vbfa_tab     = lt_vbfa
+            et_vbfa_tab           = lt_vbfa
           EXCEPTIONS
-            OTHERS       = 3.
-        IF sy-subrc = 0.
+            communication_failure = 1
+            system_failure        = 2
+            OTHERS                = 3.
+        IF sy-subrc = 0 AND ls_return-type = 'S'.
           r_result->mv_vbeln_va = lt_vbfa[ vbtyp_v = 'C' ]-vbelv.
         ENDIF.
       ENDIF.
 
-    ELSEIF ls_row-group = 'VBFA-BEU'. " BEU Document
+    ELSEIF ls_row-group = 'VBFA-BEU'.
 
       lt_vbeln_ex = VALUE #( ( sign = 'I' option = 'EQ' low = iv_number ) ).
       CALL FUNCTION 'Z_SD_CORE_C2_DATA_PRESEL_BEU'
@@ -255,6 +300,76 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
       CLEAR r_result.
     ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_ekbe.
+
+    SELECT * FROM ekbe
+                    WHERE ebeln = @is_flow-vbeln
+                    AND ebelp = @is_flow-posnn
+                    INTO TABLE @rt_ekbe.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_ekpo_loekz.
+
+    SELECT SINGLE loekz FROM ekpo
+                WHERE ebeln = @ir_vbfa->vbeln
+                AND ebelp = @ir_vbfa->posnn
+                INTO      @rv_deleted .
+
+  ENDMETHOD.
+
+
+  METHOD db_select_rbkp.
+
+    SELECT SINGLE * FROM rbkp
+            WHERE belnr = @is_flow-vbeln
+            INTO @rs_rbkp.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_rseg.
+
+    SELECT SINGLE * FROM rseg
+              WHERE belnr = @is_flow-vbeln
+              AND   buzei = @is_flow-posnn
+              INTO @rs_rseg.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_vbap.
+
+    SELECT  vbeln,
+            posnr,
+            matnr,
+            abgru
+            FROM vbap
+            WHERE vbeln = @iv_vbeln
+            INTO TABLE @rt_material.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_vbkd_vbeln.
+
+    SELECT DISTINCT vbeln FROM vbkd
+                WHERE bstkd = @mv_vbeln_va
+                INTO TABLE @rt_beu_orders.
+
+  ENDMETHOD.
+
+
+  METHOD db_select_vbkd.
+
+    SELECT * FROM vbkd
+            WHERE vbeln = @iv_vbeln
+            APPENDING TABLE @rt_vbkd.
 
   ENDMETHOD.
 
@@ -303,7 +418,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
                         iv_new   = 'A2-N' ).
     ENDIF.
 
-
   ENDMETHOD.
 
 
@@ -317,7 +431,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
       rv_vbeln = lr_flow->vbeln.
       EXIT.
     ENDLOOP.
-
 
   ENDMETHOD.
 
@@ -350,7 +463,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
 
-
   ENDMETHOD.
 
 
@@ -364,7 +476,7 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
 
   METHOD fix_material.
-    IF iv_level < 20.  " stop after 20 steps. there is not doc flow as deep as that.
+    IF iv_level < 20.
       IF ir_row->matnr CO ' X'.
         CLEAR ir_row->matnr.
       ENDIF.
@@ -392,6 +504,21 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
         APPEND ls_flow-vbeln TO rt_result.
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD prepare_flow.
+
+    fix_all_material( ).
+
+    fix_inv_receipt_posnr( ).
+
+    detect_snd_order( ).
+
+    fix_level( ).
+
+    SORT mt_flow BY matnr ASCENDING hlevel ASCENDING .
+
   ENDMETHOD.
 
 
@@ -428,9 +555,7 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
     APPEND LINES OF lt_flow TO mt_flow.
 
     LOOP AT get_beu_salesorder_numbers( ) INTO DATA(lv_vbeln).
-      SELECT * FROM vbkd
-              WHERE vbeln = @lv_vbeln
-              APPENDING TABLE @lt_vbkd.
+      lt_vbkd = db_select_vbkd( lv_vbeln ).
     ENDLOOP.
 
     LOOP AT mt_flow REFERENCE INTO DATA(lr_flow) WHERE vbtyp_n = cv_sales_order_beu.
@@ -449,32 +574,16 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
 
-
-    fix_all_material( ).
-
-    fix_inv_receipt_posnr( ).
-
-    detect_snd_order( ).
-
-    fix_level( ).
-
-    SORT mt_flow BY matnr ASCENDING hlevel ASCENDING .
-
+    prepare_flow( ).
   ENDMETHOD.
 
 
   METHOD read_additional_itm_info.
 
-    DATA lt_material TYPE ty_lt_material.
+    DATA lt_material TYPE mtt_material.
     DATA lr_vbfa TYPE REF TO zsd_core_flow_s.
 
-    SELECT  vbeln,
-            posnr,
-            matnr,
-            abgru
-            FROM vbap
-            WHERE vbeln = @iv_vbeln
-            INTO TABLE @lt_material.
+    lt_material = db_select_vbap( iv_vbeln ).
 
     LOOP AT lt_material INTO DATA(ls_material).
       LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
@@ -482,6 +591,7 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
                       AND vbeln = ls_material-vbeln
                       AND posnn = ls_material-posnr.
         lr_vbfa->matnr = ls_material-matnr.
+        lr_vbfa->abgru = ls_material-abgru.
       ENDLOOP.
       LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
                       WHERE vbtyp_v = c_vbtyp-order
@@ -493,25 +603,21 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
     LOOP AT ct_vbfa REFERENCE INTO lr_vbfa
                     WHERE vbtyp_n = c_vbtyp-purchase_order.
-      SELECT SINGLE loekz FROM ekpo
-                  WHERE ebeln = @lr_vbfa->vbeln
-                  AND ebelp = @lr_vbfa->posnn
-                  INTO @DATA(lv_deleted).
+      DATA lv_deleted TYPE ekpo-loekz.
+
+      lv_deleted = db_select_ekpo_loekz( lr_vbfa ).
       IF sy-subrc = 0 AND lv_deleted IS NOT INITIAL.
         lr_vbfa->abgru = '00'.
       ENDIF.
     ENDLOOP.
 
-
   ENDMETHOD.
 
 
   METHOD read_ekbe.
+    DATA: lt_ekbe TYPE STANDARD TABLE OF ekbe.
     LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_purchase_oder_noc.
-      SELECT * FROM ekbe
-                      WHERE ebeln = @ls_flow-vbeln
-                      AND ebelp = @ls_flow-posnn
-                      INTO TABLE @DATA(lt_ekbe).
+      lt_ekbe = db_select_ekbe( ls_flow ).
       LOOP AT lt_ekbe INTO DATA(ls_ekbe).
         APPEND VALUE #(   BASE CORRESPONDING #( ls_ekbe )
                           vbelv = ls_ekbe-ebeln
@@ -532,19 +638,16 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
 
   METHOD read_rbkp.
-    " store new rows locally otherwise they will be interpreted again
-    " resulting in an endless loop
+
+
     DATA lt_new_rows LIKE mt_flow.
+    DATA: ls_rbkp TYPE rbkp,
+          ls_rseg TYPE rseg.
 
     LOOP AT mt_flow INTO DATA(ls_flow) WHERE vbtyp_n = cv_inv_rcpt_noc.
-      SELECT SINGLE * FROM rbkp
-              WHERE belnr = @ls_flow-vbeln
-              INTO @DATA(ls_rbkp).
+      ls_rbkp = db_select_rbkp( ls_flow ).
       IF sy-subrc = 0.
-        SELECT SINGLE * FROM rseg
-                  WHERE belnr = @ls_flow-vbeln
-                  AND   buzei = @ls_flow-posnn
-                  INTO @DATA(ls_rseg).
+        ls_rseg = db_select_rseg( ls_flow ).
       ENDIF.
       IF sy-subrc = 0.
         APPEND VALUE #(   BASE CORRESPONDING #( ls_rseg )
@@ -555,8 +658,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
                           vbtyp_n = cv_inv_rcpt_noc
                           erdat = ls_rbkp-cpudt
                           erzet = ls_rbkp-cputm
-*                          rfmng = - ls_rseg-menge  doesn't improve the outcome so it will not contain these details, it generates a second line it will not duplicate the quantities
-*                          rfwrt = - ls_rseg-wrbtr
                           ) TO lt_new_rows.
       ENDIF.
     ENDLOOP.
@@ -576,12 +677,12 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
     CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
       EXPORTING
-        belegtyp = 'C'    " Document Category: Order
-        comwa    = ls_comwa    " Outgoing document for flow processing
+        belegtyp = 'C'
+        comwa    = ls_comwa
       TABLES
-        vbfa_tab = lt_vbfa    " Document flow information
+        vbfa_tab = lt_vbfa
       EXCEPTIONS
-        OTHERS   = 0. " the flow will just be empty
+        OTHERS   = 0.
 
     MOVE-CORRESPONDING lt_vbfa TO mt_flow.
 
@@ -603,13 +704,12 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
 
   METHOD read_regular_flow_beu.
+
+    DATA: lt_beu_orders TYPE STANDARD TABLE OF mts_vbeln.
     DATA: ls_comwa TYPE vbco6,
           lt_vbfa  TYPE STANDARD TABLE OF vbfa.
-    SELECT DISTINCT vbeln FROM vbkd
-            WHERE bstkd = @mv_vbeln_va
-            INTO TABLE @DATA(lt_beu_orders).
+    lt_beu_orders = db_select_vbkd_vbeln( ).
 
-    " first gather all flow information
     LOOP AT lt_beu_orders INTO DATA(lv_beu_order_number).
       CLEAR lt_vbfa[].
 
@@ -617,17 +717,14 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
 
       CALL FUNCTION 'RV_ORDER_FLOW_INFORMATION'
         EXPORTING
-          belegtyp = 'C'    " Document Category: Order
-          comwa    = ls_comwa    " Outgoing document for flow processing
+          belegtyp = 'C'
+          comwa    = ls_comwa
         TABLES
-          vbfa_tab = lt_vbfa    " Document flow information
+          vbfa_tab = lt_vbfa
         EXCEPTIONS
           OTHERS   = 3.
       IF sy-subrc <> 0.
-* MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-*            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
       ENDIF.
-
 
       APPEND LINES OF CORRESPONDING mtt_flow( lt_vbfa ) TO mt_flow.
       read_additional_itm_info(    EXPORTING   iv_vbeln = lv_beu_order_number-vbeln
@@ -636,7 +733,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
     ENDLOOP.
 
 
-    " map VBFA types to our types.
     LOOP AT mt_flow REFERENCE INTO DATA(lr_flow).
       IF lr_flow->vbtyp_n IS NOT INITIAL.
         lr_flow->vbtyp_n = VALUE #( mt_mapping[ group = 'VBFA-BEU' source = lr_flow->vbtyp_n ]-target
@@ -675,7 +771,6 @@ CLASS ZCL_SD_CORE_DOC_FLOW IMPLEMENTATION.
         WRITE: / 'invoice reiceipt missing for ', ls_flow-vbeln, ls_flow-posnn, ls_flow-matnr.
       ENDIF.
     ENDLOOP.
-
 
     lt_report = VALUE #( FOR <x> IN mt_flow ( CORRESPONDING #( <x> ) ) ).
 
