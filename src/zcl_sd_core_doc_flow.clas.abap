@@ -917,8 +917,9 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
                           GROUP BY <line>-matnr WITHOUT MEMBERS ( value ) ).
     DATA(lv_edge) = 1.
     APPEND |digraph "{ mv_vbeln_va }" \{| TO r_result.
+    APPEND |rankdir = LR;| TO r_result.
     LOOP AT lt_materials INTO DATA(lv_matnr) WHERE table_line(1) <> space.
-      APPEND |subgraph "{ lv_matnr }" \{| TO r_result.
+      APPEND |subgraph "cluster_{ lv_matnr }" \{| TO r_result.
       CALL FUNCTION 'MAKT_SINGLE_READ'
         EXPORTING
           matnr  = CONV matnr( lv_matnr )
