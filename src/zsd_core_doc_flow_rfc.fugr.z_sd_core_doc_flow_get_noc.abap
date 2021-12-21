@@ -1,4 +1,4 @@
-FUNCTION Z_SD_CORE_DOC_FLOW_GET_NOC.
+FUNCTION z_sd_core_doc_flow_get_noc.
 *"----------------------------------------------------------------------
 *"*"Local Interface:
 *"  IMPORTING
@@ -13,6 +13,7 @@ FUNCTION Z_SD_CORE_DOC_FLOW_GET_NOC.
   lo_flow->read_regular_flow( ).
   lo_flow->read_ekbe( ).
   lo_flow->read_rbkp( ).
+  lo_flow->read_banfn( ).
   et_flow[] = lo_flow->mt_flow.
 
 ENDFUNCTION.

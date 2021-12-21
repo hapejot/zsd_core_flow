@@ -60,6 +60,9 @@ CLASS zcl_sd_core_doc_flow DEFINITION
     METHODS write_report .
     METHODS prepare_flow.
     METHODS read_banfn.
+    METHODS to_graphviz
+      RETURNING
+        VALUE(r_result) TYPE stringtab.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -69,7 +72,7 @@ CLASS zcl_sd_core_doc_flow DEFINITION
              target TYPE string,
            END OF mts_map.
     TYPES: mtt_mapping TYPE SORTED TABLE OF mts_map WITH UNIQUE  KEY group source.
-    TYPES: mtt_vbeln_va TYPE STANDARD TABLE OF vbeln_va WITH DEFAULT KEY,
+    TYPES: mtt_vbeln_va TYPE STANDARD TABLE OF vbeln WITH DEFAULT KEY,
            BEGIN OF lts_row,
              vbeln TYPE vbap-vbeln,
              posnr TYPE vbap-posnr,
@@ -82,7 +85,8 @@ CLASS zcl_sd_core_doc_flow DEFINITION
            BEGIN OF mts_vbeln,
              vbeln TYPE vbkd-vbeln,
            END OF mts_vbeln,
-           ty_lt_beu_orders TYPE STANDARD TABLE OF mts_vbeln WITH DEFAULT KEY.
+           ty_lt_beu_orders TYPE STANDARD TABLE OF mts_vbeln WITH DEFAULT KEY,
+           mtt_vbep         TYPE STANDARD TABLE OF vbep WITH DEFAULT KEY.
     METHODS db_select_vbkd_vbeln
       RETURNING
         VALUE(rt_beu_orders) TYPE ty_lt_beu_orders.
@@ -158,6 +162,11 @@ CLASS zcl_sd_core_doc_flow DEFINITION
         iv_vbeln         TYPE vbeln
       RETURNING
         VALUE(rt_result) TYPE mtt_eban.
+    METHODS db_select_vbep
+      IMPORTING
+        iv_vbeln         TYPE vbeln
+      RETURNING
+        VALUE(rt_result) TYPE mtt_vbep.
 
     CLASS-DATA: mt_mapping TYPE mtt_mapping.
     CLASS-DATA: mt_level TYPE STANDARD TABLE OF zsd_vbtyp WITH DEFAULT KEY.
@@ -816,32 +825,129 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
     DATA iv_source_type TYPE zsd_vbtyp.
     DATA: lv_vbeln TYPE vbeln.
     TYPES ltt_vbeln TYPE STANDARD TABLE OF vbeln WITH DEFAULT KEY.
-    LOOP AT VALUE ltt_vbeln( FOR GROUPS value OF <line> IN mt_flow WHERE ( vbtyp_n = iv_source_type )
+
+    " read connections between PR and PO
+    LOOP AT VALUE ltt_vbeln( FOR GROUPS value OF <line> IN mt_flow WHERE ( vbtyp_n = cv_purchase_oder_noc )
                         GROUP BY <line>-vbeln WITHOUT MEMBERS ( value ) ) INTO lv_vbeln.
       LOOP AT db_select_eban( lv_vbeln ) INTO DATA(ls_eban).
         APPEND VALUE #(   BASE CORRESPONDING #( ls_eban )
-*                          vbelv = ls_eban-
-*                          posnv = ls_ekbe-ebelp
-                          vbtyp_v = ''
-*                          vbeln = ls_ekbe-belnr
-*                          posnn = ls_ekbe-buzei
-*                          vbtyp_n = mt_mapping[ group = iv_group source = ls_ekbe-bewtp ]-target
-*                          hlevel = ls_flow-hlevel + 1
-*                          rfmng = ls_ekbe-menge
-*                          rfwrt = ls_ekbe-wrbtr
-*                          erdat = ls_ekbe-cpudt
-*                          erzet = ls_ekbe-cputm
+                          vbelv = ls_eban-banfn
+                          posnv = ls_eban-bnfpo
+                          vbtyp_v = 'PRQ-N'
+                          vbeln = ls_eban-ebeln
+                          posnn = ls_eban-ebelp
+                          vbtyp_n = cv_purchase_oder_noc
+                          matnr = ls_eban-matnr
+                          rfmng = 0 " since O-NOC -> P-NOC has quantities too, this will double it.
+                          rfwrt = 0 " same here
+                          erdat = ls_eban-erdat
                           ) TO mt_flow.
       ENDLOOP.
     ENDLOOP.
+
+    LOOP AT VALUE ltt_vbeln( FOR GROUPS value OF <line> IN mt_flow WHERE ( vbtyp_n = 'O-NOC' )
+                                GROUP BY <line>-vbeln WITHOUT MEMBERS ( value ) )
+                        INTO lv_vbeln.
+      DATA(lt_vbap) = db_select_vbap( lv_vbeln ).
+      LOOP AT db_select_vbep( lv_vbeln ) INTO DATA(ls_vbep).
+        APPEND VALUE #(   BASE CORRESPONDING #( ls_vbep )
+                          vbelv = ls_vbep-vbeln
+                          posnv = ls_vbep-posnr
+                          vbtyp_v = 'O-NOC'
+                          vbeln = ls_vbep-banfn
+                          posnn = ls_vbep-bnfpo
+                          vbtyp_n = 'PRQ-N'
+                          matnr = VALUE #( lt_vbap[ posnr = ls_vbep-posnr ]-matnr OPTIONAL )
+                          rfmng = ls_vbep-wmeng
+                          ) TO mt_flow.
+      ENDLOOP.
+    ENDLOOP.
+
+
+
   ENDMETHOD.
 
 
   METHOD db_select_eban.
     SELECT DISTINCT *
                 FROM eban
-                WHERE banfn IN ( SELECT banfn FROM vbep WHERE vbeln = @iv_vbeln )
+                WHERE ebeln = @iv_vbeln
                 INTO TABLE @rt_result.
+  ENDMETHOD.
+
+
+  METHOD db_select_vbep.
+
+
+    SELECT DISTINCT *
+                FROM vbep
+                WHERE vbeln = @iv_vbeln
+                AND banfn > ' '
+                AND wmeng > 0
+                INTO TABLE @rt_result.
+
+  ENDMETHOD.
+
+
+  METHOD to_graphviz.
+    TYPES: BEGIN OF t_row,
+             matnr   TYPE zsd_matnr,
+             vbtyp_n TYPE zsd_vbtyp,
+             vbeln   TYPE vbfa-vbeln,
+             posnn   TYPE vbfa-posnn,
+             rfmng   TYPE vbfa-rfmng,
+             abgru   TYPE abgru,
+             vbtyp_v TYPE zsd_vbtyp,
+             vbelv   TYPE vbfa-vbeln,
+             posnv   TYPE vbfa-posnn,
+             rfwrt   TYPE vbfa-rfwrt,
+             erdat   TYPE vbfa-erdat,
+             erzet   TYPE vbfa-erzet,
+           END OF t_row.
+    DATA lt_report TYPE STANDARD TABLE OF t_row WITH DEFAULT KEY.
+    DATA lt_materials TYPE STANDARD TABLE OF zsd_matnr.
+    DATA: ls_makt TYPE makt.
+    DATA lt_nodes TYPE SORTED TABLE OF string WITH UNIQUE KEY table_line.
+    DATA: ls_row TYPE t_row.
+
+
+    lt_report = VALUE #( FOR <x> IN mt_flow ( CORRESPONDING #( <x> ) ) ).
+
+    lt_materials = VALUE #( FOR GROUPS value OF <line> IN mt_flow WHERE ( matnr > space )
+                          GROUP BY <line>-matnr WITHOUT MEMBERS ( value ) ).
+    DATA(lv_edge) = 1.
+    APPEND |digraph "{ mv_vbeln_va }" \{| TO r_result.
+    LOOP AT lt_materials INTO DATA(lv_matnr) WHERE table_line(1) <> space.
+      APPEND |subgraph "{ lv_matnr }" \{| TO r_result.
+      CALL FUNCTION 'MAKT_SINGLE_READ'
+        EXPORTING
+          matnr  = CONV matnr( lv_matnr )
+          spras  = sy-langu
+        IMPORTING
+          wmakt  = ls_makt
+        EXCEPTIONS
+          OTHERS = 0.
+      APPEND |label = "{ lv_matnr } - { ls_makt-maktx }";| TO r_result.
+*      CLEAR lt_nodes[].
+*      LOOP AT lt_report INTO ls_row
+*                        WHERE matnr = lv_matnr
+*                        AND vbtyp_n > space
+*                        AND vbtyp_v > space.
+*        INSERT |<node id="{ ls_row-vbtyp_n }::{ ls_row-vbeln }::{ ls_row-posnn }"/>| INTO TABLE lt_nodes.
+*        INSERT |<node id="{ ls_row-vbtyp_v }::{ ls_row-vbelv }::{ ls_row-posnv }"/>| INTO TABLE lt_nodes.
+*      ENDLOOP.
+*      APPEND LINES OF lt_nodes TO r_result.
+      LOOP AT lt_report INTO ls_row
+                        WHERE matnr = lv_matnr
+                        AND vbtyp_n > space
+                        AND vbtyp_v > space.
+        INSERT | "{ ls_row-vbtyp_v }::{ ls_row-vbelv }::{ ls_row-posnv }" -> "{ ls_row-vbtyp_n }::{ ls_row-vbeln }::{ ls_row-posnn }";| INTO TABLE r_result.
+        ADD 1 TO lv_edge.
+      ENDLOOP.
+      APPEND |\}| TO r_result.
+    ENDLOOP.
+    APPEND |\}| TO r_result.
+
   ENDMETHOD.
 
 ENDCLASS.
