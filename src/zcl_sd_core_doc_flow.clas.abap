@@ -6,7 +6,8 @@ CLASS zcl_sd_core_doc_flow DEFINITION
   PUBLIC SECTION.
 
     TYPES:
-      mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY .
+      mtt_eban TYPE STANDARD TABLE OF eban WITH DEFAULT KEY,
+      mtt_flow TYPE STANDARD TABLE OF zsd_core_flow_s WITH DEFAULT KEY.
 
     DATA mt_flow TYPE mtt_flow .
     CONSTANTS:
@@ -58,6 +59,7 @@ CLASS zcl_sd_core_doc_flow DEFINITION
         zcx_bc_missing_value .
     METHODS write_report .
     METHODS prepare_flow.
+    METHODS read_banfn.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -151,6 +153,11 @@ CLASS zcl_sd_core_doc_flow DEFINITION
         is_flow        TYPE zsd_core_flow_s
       RETURNING
         VALUE(rs_rseg) TYPE rseg.
+    METHODS db_select_eban
+      IMPORTING
+        iv_vbeln         TYPE vbeln
+      RETURNING
+        VALUE(rt_result) TYPE mtt_eban.
 
     CLASS-DATA: mt_mapping TYPE mtt_mapping.
     CLASS-DATA: mt_level TYPE STANDARD TABLE OF zsd_vbtyp WITH DEFAULT KEY.
@@ -499,11 +506,15 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
 
 
   METHOD get_beu_salesorder_numbers.
-    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = cv_sales_order_beu.
-      IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
-        APPEND ls_flow-vbeln TO rt_result.
-      ENDIF.
-    ENDLOOP.
+    " collect all BEU order numbers into the returning table
+    rt_result = VALUE #( FOR GROUPS value OF <line> IN mt_flow WHERE ( vbtyp_n = cv_sales_order_beu )
+                          GROUP BY <line>-vbeln WITHOUT MEMBERS ( value ) ).
+
+*    LOOP AT mt_flow INTO DATA(ls_flow)  WHERE vbtyp_n = cv_sales_order_beu.
+*      IF NOT line_exists( rt_result[ table_line = ls_flow-vbeln ] ).
+*        APPEND ls_flow-vbeln TO rt_result.
+*      ENDIF.
+*    ENDLOOP.
   ENDMETHOD.
 
 
@@ -554,8 +565,9 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
         OTHERS                = 99.
     APPEND LINES OF lt_flow TO mt_flow.
 
+    CLEAR lt_vbkd[].
     LOOP AT get_beu_salesorder_numbers( ) INTO DATA(lv_vbeln).
-      lt_vbkd = db_select_vbkd( lv_vbeln ).
+      APPEND LINES OF db_select_vbkd( lv_vbeln ) TO lt_vbkd.
     ENDLOOP.
 
     LOOP AT mt_flow REFERENCE INTO DATA(lr_flow) WHERE vbtyp_n = cv_sales_order_beu.
@@ -799,4 +811,37 @@ CLASS zcl_sd_core_doc_flow IMPLEMENTATION.
       ENDAT.
     ENDLOOP.
   ENDMETHOD.
+
+  METHOD read_banfn.
+    DATA iv_source_type TYPE zsd_vbtyp.
+    DATA: lv_vbeln TYPE vbeln.
+    TYPES ltt_vbeln TYPE STANDARD TABLE OF vbeln WITH DEFAULT KEY.
+    LOOP AT VALUE ltt_vbeln( FOR GROUPS value OF <line> IN mt_flow WHERE ( vbtyp_n = iv_source_type )
+                        GROUP BY <line>-vbeln WITHOUT MEMBERS ( value ) ) INTO lv_vbeln.
+      LOOP AT db_select_eban( lv_vbeln ) INTO DATA(ls_eban).
+        APPEND VALUE #(   BASE CORRESPONDING #( ls_eban )
+*                          vbelv = ls_eban-
+*                          posnv = ls_ekbe-ebelp
+                          vbtyp_v = ''
+*                          vbeln = ls_ekbe-belnr
+*                          posnn = ls_ekbe-buzei
+*                          vbtyp_n = mt_mapping[ group = iv_group source = ls_ekbe-bewtp ]-target
+*                          hlevel = ls_flow-hlevel + 1
+*                          rfmng = ls_ekbe-menge
+*                          rfwrt = ls_ekbe-wrbtr
+*                          erdat = ls_ekbe-cpudt
+*                          erzet = ls_ekbe-cputm
+                          ) TO mt_flow.
+      ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD db_select_eban.
+    SELECT DISTINCT *
+                FROM eban
+                WHERE banfn IN ( SELECT banfn FROM vbep WHERE vbeln = @iv_vbeln )
+                INTO TABLE @rt_result.
+  ENDMETHOD.
+
 ENDCLASS.

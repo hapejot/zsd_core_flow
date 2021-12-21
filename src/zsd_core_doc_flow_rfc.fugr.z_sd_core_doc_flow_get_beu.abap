@@ -13,6 +13,7 @@ FUNCTION Z_SD_CORE_DOC_FLOW_GET_BEU.
   lo_flow->read_regular_flow_beu( ).
   lo_flow->read_ekbe( ).
 *  lo_flow->read_rbkp( ).
+  lo_flow->read_banfn( ).
   et_flow[] = lo_flow->mt_flow.
 
 ENDFUNCTION.
